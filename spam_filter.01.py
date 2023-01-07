@@ -47,8 +47,8 @@ if __name__ == "__main__":
     tot_emails = {1: spam_emails, 0: ham_emails}
 
     email_attributes = EmailAttributeList()
-    email_attributes.add_emails(0, ham_emails[:300])
-    email_attributes.add_emails(1, spam_emails[:300])
+    email_attributes.add_emails(0, ham_emails)
+    email_attributes.add_emails(1, spam_emails)
     
     suz_tokenizer = re.compile('\!|\$|(password)|(virus)')
 
@@ -58,33 +58,47 @@ if __name__ == "__main__":
 
 
         tag_counts = {
-            "NNP": 0,
-            "VBZ": 0,
-            "VBG": 0,
-            "IN": 0,
-            "NN": 0,
-            "$": 0,
-            "CD": 0,
+            "VERB": 0,
+            "SYM": 0,
+            "PROPN": 0,
+            "PRON": 0,
+            "NUM": 0,
+            "NOUN": 0,
+            "ADV": 0,
+            "ADP": 0,
+            "ADJ": 0,
+            "AUX": 0,
+            "SCONJ": 0,
+            "CCONJ": 0,
+            "INTJ": 0,
+            "PART": 0,
+            "DET": 0,
             "Unknown_tags": 0
         }
+
+        bad_pos = ["PUNCT", "SPACE"]
             
+        
         unique_tokens = []
         capital_words = 0
 
-        total_words = len(doc1)
+        total_words = 0
+        total_sentences = 0
+        long_words = 0
+
         if total_words == 0:
             total_words = 1
 
         for token in doc1:
-            add_to_vocabulary(vocabulary, token.text)
-            if doc1.get("spam"):
-                add_to_vocabulary(spam_vocabulary, token.text)
-            else:
-                add_to_vocabulary(ham_vocabulary, token.text)
-    
+            if token.pos_ in bad_pos:
+                continue
 
+            total_words += 1
+            if len(token.text) > 6:
+                long_words += 1
+            
             try:
-                tag_counts[token.tag] += 1
+                tag_counts[token.pos_] += 1
             except: 
                 tag_counts["Unknown_tags"] += 1
             
@@ -93,26 +107,22 @@ if __name__ == "__main__":
 
             if token.text.upper() == token.text:
                 capital_words += 1
-    
 
+                            
+        if total_sentences == 0:
+            total_sentences = 1
         #more or less syntactic measures
-        email_1.set_attribute("n_ents", len(doc1.ents))
-        email_1.set_attribute("n_tokens", total_words)
-        email_1.set_attribute("n_ents_relative", len(doc1.ents) / total_words)
-        email_1.set_attribute("capital_words", capital_words)
         email_1.set_attribute("capital_words_relative", capital_words / total_words)
-        email_1.set_attribute("unique_n_tokens", len(unique_tokens))
-        email_1.set_attribute("unique_n_tokens_relative", len(unique_tokens) / total_words)
-        alarming_tokens_tot = len([suz_tokenizer.findall(email_1.get("raw"))])
-        email_1.set_attribute("alarming_tokens", alarming_tokens_tot)
-        email_1.set_attribute("alarming_tokens_relative", alarming_tokens_tot / total_words)
+        
+        #readability measures:
+        LIX = (total_words / total_sentences) + (long_words * 100) / total_words
+        email_1.set_attribute("LIX", LIX)
 
-        #more semantic measures
-        email_1.set_attribute("subjectivity", doc1._.blob.subjectivity)
+
+        #semantic measure
         email_1.set_attribute("polarity", doc1._.blob.polarity)
 
         for tag, count in tag_counts.items():
-            email_1.set_attribute(tag, count)
             email_1.set_attribute(f"{tag}_relative", count / total_words)
         
     for key in vocabulary:

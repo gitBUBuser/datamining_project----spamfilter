@@ -7,6 +7,7 @@ from email import message as e_message
 import re 
 from pyexcel_ods3 import save_data
 from collections import OrderedDict
+import random
 import io
 
 # class for stroing email messages in an intuitive and understandable manner
@@ -47,23 +48,19 @@ class SimplifiedMessage():
         
 # class for stroring, removing information about email attributes
 class EmailInfo():
-    def __init__(self, spam, email, id):
-        if email == None:
+    def __init__(self, spam, text_body, id):
+        if text_body == None:
             self.info = {
                 "id": id,
                 "spam": spam,
                 "raw": "none",
-                "n_cc": 0,
-                "n_receivers": 0
             }
 
         else:
             self.info = {
                 "id": id,
                 "spam": spam,
-                "raw": email.text_body,
-                "n_cc": len(email.ccs),
-                "n_receivers": len(email.receivers)
+                "raw": text_body,
             }
         
     def set_attributes(self, args_dict):
@@ -83,7 +80,7 @@ class EmailInfo():
         return self.info[attribute]
 
     def all_features(self):
-        feature_vector = self.info
+        feature_vector = self.info.copy()
         feature_vector.pop("id")
         feature_vector.pop("spam")
         feature_vector.pop("raw")
@@ -93,7 +90,7 @@ class EmailInfo():
         if attributes == ["all"]:
             return self.all_features()
         else:
-            return [self.get(key) for key in attribute]
+            return [self.get(key) for key in attributes]
 
     def spam_class(self):
         return self.get("spam")
@@ -116,8 +113,9 @@ class EmailAttributeList():
         return self.emails        
     
     def add_email(self, spam, email):
-        self.emails.append(EmailInfo(spam, email, self.length))
+        self.emails.append(EmailInfo(spam, email.text_body, self.length))
         self.length += 1
+        
     def add_email_with_args(self, args):
         email = EmailInfo(0, None, 0)
         email.set_attributes(args)
@@ -178,13 +176,46 @@ class EmailAttributeList():
                 attributes[column] = file.at[row, column]            
             self.add_email_with_args(attributes)
 
+    def restrict_to_amount_per_class(self, amount_per_class):
+        spam_emails = []
+        ham_emails = []
+
+        for email in self.get_emails():
+            if email.spam_class() == '1':
+                spam_emails.append(email)
+            else:
+                ham_emails.append(email)
+                
+        spam_emails = random.sample(spam_emails, amount_per_class)
+        ham_emails = random.sample(ham_emails, amount_per_class)
+        
+        self.emails = spam_emails + ham_emails
+
 
     # attributes = all by defualt, one can choose which attributes one wishes to get from the feature vector
-    def to_feature_vector(self, attributes = ["all"]):
+    def to_feature_vector(self, attributes = ["all"], amount_per_class = None):
         y = []
         X = []
-        for email in self.get_emails():
-            y.append(email.spam_class())
-            X.append(email.get_attributes(attributes))
         
+        if  amount_per_class == None:
+            for email in self.get_emails():
+                y.append(email.spam_class())
+                X.append(email.get_attributes(attributes))
+        else:
+            spam_emails = []
+            ham_emails = []
+
+            for email in self.get_emails():
+                if email.spam_class() == '1':
+                    spam_emails.append(email)
+                else:
+                    ham_emails.append(email)
+                    
+            spam_emails = random.sample(spam_emails, amount_per_class)
+            ham_emails = random.sample(ham_emails, amount_per_class)
+            emails = spam_emails + ham_emails
+            for email in emails:
+                y.append(email.spam_class())
+                X.append(email.get_attributes(attributes))
+
         return np.array(X, dtype=float), np.array(y, dtype=int)
