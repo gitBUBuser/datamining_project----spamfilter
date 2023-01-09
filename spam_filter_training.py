@@ -14,14 +14,8 @@ import matplotlib.pyplot as plt
 from math import ceil
 from math import sqrt
 
-from sklearn.neural_network import MLPClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
-
-class train_test_errors():
-    def __init__(self):
-
-        pass
 
 
 def plot_tree_depth_errors_all(attribute_errors):
